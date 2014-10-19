@@ -1,0 +1,67 @@
+#!/bin/bash
+echo "[MESSAGE] Script invoked at `date`"
+
+##################################################################
+#Pre-process
+#Count number of suffixes in each partition and store them in partitionCount.ini
+./prefixCount /path/to/*.fasta READ_LENGTH partitionCount.ini &
+
+##################################################################
+#Partitioning
+
+#Load the fasta file using p processors/threads
+#Make p directories to store suffix partitions from the p processors/threads
+
+for i in {0..(p-1)}; do (mkdir ReadSet_$i) ; done
+
+#partition the suffixes on p processors/threads
+
+.PartitionSuf /path/to/*.fasta ./ReadSet_0 0 #reads_load_by_each_processor &
+.PartitionSuf /path/to/*.fasta ./ReadSet_1 1 #reads_load_by_each_processor &
+			.
+			.
+			.
+.PartitionSuf /path/to/*.fasta ./ReadSet_(p-1) (p-1) #reads_load_by_each_processor &
+
+for job in `jobs -p` 
+do 
+wait $job  
+done
+
+echo " [MESSAGE] Partition Finished at `date`"
+##################################################################
+#Sorting
+
+#Make a directory to store BWT codes from each partition.
+mkdir BWT 
+
+#Sort the suffixes in each partition. 
+#If suffixes are classified by their first 4 characters, there would be 4^4=256 partitions.
+
+./Rsort prefix_0 partitionCount.ini 0 ./BWT/ #processors_used_to_load_file &
+./Rsort prefix_1 partitionCount.ini 1 ./BWT/ #processors_used_to_load_file &
+./Rsort prefix_2 partitionCount.ini 2 ./BWT/ #processors_used_to_load_file &
+			.
+			.
+			.
+./Rsort prefix_(ID_of_partitions) partitionCount.ini ID_of_partition ./BWT/ #processors_used_to_load_file &
+
+for job in `jobs -p` 
+do 
+wait $job  
+done
+
+##################################################################
+cat ./BWT/* > BWT_Final
+
+echo " [MESSAGE] Script ended at `date`"
+
+
+
+
+
+
+
+
+
+
